@@ -1,7 +1,7 @@
 # Usage example:
 #```hcl
 # module "website" {
-#   source = "github.com/burib/terraform-aws-ui-module?ref=init"
+#   source = "github.com/burib/terraform-aws-ui-module?ref=v0"
 #
 #   domain_name              = "example.com"
 #   environment             = "prod"
@@ -15,6 +15,7 @@
 #   }
 # }
 #```
+
 # Variables
 variable "domain_name" {
   type        = string
@@ -109,8 +110,6 @@ locals {
     }
   }
 }
-
-
 
 # Random ID Generator
 resource "random_id" "bucket_suffix" {
