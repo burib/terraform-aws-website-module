@@ -1,4 +1,3 @@
-
 # Usage example:
 #```hcl
 # module "website" {
@@ -16,31 +15,15 @@
 #   }
 # }
 #```
-# main.tf
-
-#############################
 # Variables
-#############################
-
 variable "domain_name" {
   type        = string
   description = "Domain name for the website"
 }
 
 variable "environment" {
-  description = <<EOF
-    Environment variable used to tag resources created by this module.
-
-    **Example values are:**
-      - temp
-      - dev
-      - staging
-      - prod
-
-    **Notes:**
-      Put here your notes if there is any.
-  EOF
   type        = string
+  description = "Environment (dev/staging/prod)"
 }
 
 variable "wildcard_certificate_arn" {
@@ -59,24 +42,6 @@ variable "redirect_www_to_https" {
   default     = true
 }
 
-variable "api_domain" {
-  type        = string
-  description = "API Gateway custom domain (e.g., api.example.com)"
-  default     = null
-}
-
-variable "auth_domain" {
-  type        = string
-  description = "Custom domain for Cognito auth (e.g., auth.example.com)"
-  default     = null
-}
-
-variable "enable_auth" {
-  type        = bool
-  description = "Enable authentication setup"
-  default     = false
-}
-
 variable "tags" {
   type        = map(string)
   description = "Tags to apply to resources"
@@ -89,27 +54,13 @@ variable "price_class" {
   default     = "PriceClass_All"
 }
 
-variable "custom_error_ttl" {
-  type = map(number)
-  description = "Custom TTL for error pages"
-  default = {
-    403 = 3600    # 1 hour
-    404 = 86400   # 24 hours
-    500 = 3600    # 1 hour
-    503 = 3600    # 1 hour
-  }
-}
-
 variable "cloudfront_minimum_protocol_version" {
   type        = string
   description = "Minimum TLS version for CloudFront"
   default     = "TLSv1.2_2021"
 }
 
-#############################
 # Locals
-#############################
-
 locals {
   times = {
     oneHour  = 3600
@@ -122,9 +73,6 @@ locals {
   www_bucket_name = "www-${var.domain_name}-${random_id.bucket_suffix.hex}"
   s3_origin_id    = "S3-${local.bucket_name}"
   www_domain      = "www.${var.domain_name}"
-  api_domain      = coalesce(var.api_domain, "api.${var.domain_name}")
-  auth_domain     = coalesce(var.auth_domain, "auth.${var.domain_name}")
-  website_domain = "${aws_s3_bucket.website.id}.s3.${data.aws_region.current.name}.amazonaws.com"
 
   cache_settings = {
     static = {
@@ -142,21 +90,6 @@ locals {
   }
 
   static_paths = ["*.css", "*.js", "*.jpg", "*.jpeg", "*.png", "*.gif", "*.ico", "*.svg", "*.woff", "*.woff2", "*.ttf", "*.eot"]
-  
-  protected_paths = var.enable_auth ? ["/*"] : []
-  public_paths = var.enable_auth ? [
-    "/",
-    "/login",
-    "/logout",
-    "/callback",
-    "/assets/*",
-    "/static/*",
-    "/*.ico",
-    "/*.png",
-    "/*.svg",
-    "/error_*.html"
-  ] : []
-
   error_pages = {
     "error_403.html" = {
       title   = "Access Denied"
@@ -177,23 +110,17 @@ locals {
   }
 }
 
-#############################
-# Random ID Generator
-#############################
 
+
+# Random ID Generator
 resource "random_id" "bucket_suffix" {
   byte_length = 4
-  
   keepers = {
     domain_name = var.domain_name
   }
 }
 
-#############################
 # S3 Resources
-#############################
-
-# Primary website bucket
 resource "aws_s3_bucket" "website" {
   bucket = local.bucket_name
   tags   = var.tags
@@ -208,7 +135,6 @@ resource "aws_s3_bucket_versioning" "website" {
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "website" {
   bucket = aws_s3_bucket.website.id
-
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
@@ -216,17 +142,25 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "website" {
   }
 }
 
-# Update public access block settings
 resource "aws_s3_bucket_public_access_block" "website" {
   bucket = aws_s3_bucket.website.id
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-# Update bucket policy for CloudFront access
+# Origin Access Control
+resource "aws_cloudfront_origin_access_control" "website" {
+  name                              = var.domain_name
+  description                       = "OAC for ${var.domain_name}"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+# S3 bucket policy for CloudFront
 resource "aws_s3_bucket_policy" "website" {
   depends_on = [aws_s3_bucket_public_access_block.website]
   bucket = aws_s3_bucket.website.id
@@ -252,111 +186,6 @@ resource "aws_s3_bucket_policy" "website" {
   })
 }
 
-# Add Origin Access Control
-resource "aws_cloudfront_origin_access_control" "website" {
-  name                              = var.domain_name
-  description                       = "OAC for ${var.domain_name}"
-  origin_access_control_origin_type = "s3"
-  signing_behavior                  = "always"
-  signing_protocol                  = "sigv4"
-}
-
-resource "aws_s3_bucket_website_configuration" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  error_document {
-    key = "error.html"
-  }
-}
-
-# WWW redirect bucket
-resource "aws_s3_bucket" "www_redirect" {
-  count  = var.redirect_www_to_https ? 1 : 0
-  bucket = local.www_bucket_name
-  tags   = var.tags
-}
-
-resource "aws_s3_bucket_website_configuration" "www_redirect" {
-  count  = var.redirect_www_to_https ? 1 : 0
-  bucket = aws_s3_bucket.www_redirect[0].id
-
-  redirect_all_requests_to {
-    host_name = var.domain_name
-    protocol  = "https"
-  }
-}
-
-# Logging bucket
-resource "aws_s3_bucket" "cloudfront_logs" {
-  bucket = "${local.bucket_name}-cf-logs"
-
-  tags   = var.tags
-}
-
-resource "aws_s3_bucket_ownership_controls" "cloudfront_logs" {
-  bucket = aws_s3_bucket.cloudfront_logs.id
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-
-resource "aws_s3_bucket_acl" "cloudfront_logs" {
-  depends_on = [aws_s3_bucket_ownership_controls.cloudfront_logs]
-
-  bucket = aws_s3_bucket.cloudfront_logs.id
-  acl    = "private"
-}
-
-resource "aws_s3_bucket_policy" "cloudfront_logs_policy" {
-  bucket = aws_s3_bucket.cloudfront_logs.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "AllowCloudFrontLogging"
-        Effect    = "Allow"
-        Principal = {
-          Service = "cloudfront.amazonaws.com"
-        }
-        Action    = "s3:PutObject"
-        Resource  = "${aws_s3_bucket.cloudfront_logs.arn}/*"
-        Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.website.arn
-          }
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "cloudfront_logs" {
-  bucket = aws_s3_bucket.cloudfront_logs.id
-
-  rule {
-    id     = "cleanup_old_logs"
-    status = "Enabled"
-
-    expiration {
-      days = 30
-    }
-  }
-}
-
-# Store bucket name in SSM Parameter Store
-resource "aws_ssm_parameter" "bucket_name" {
-  name        = "/${var.domain_name}/website/s3_bucket_name"
-  description = "S3 bucket name for ${var.domain_name} website. Use this when you need to sync the UI dist files to s3."
-  type        = "String"
-  value       = local.bucket_name
-  tags        = var.tags
-  overwrite   = true
-}
 
 #############################
 # S3 Objects
@@ -526,10 +355,7 @@ EOF
   tags = var.tags
 }
 
-#############################
-# CloudFront Resources
-#############################
-
+# CloudFront Distribution
 resource "aws_cloudfront_distribution" "website" {
   enabled             = true
   is_ipv6_enabled    = true
@@ -538,48 +364,24 @@ resource "aws_cloudfront_distribution" "website" {
   aliases            = var.redirect_www_to_https ? [var.domain_name, local.www_domain] : [var.domain_name]
   price_class        = var.price_class
   tags               = var.tags
-  
-  web_acl_id = null
 
-  # Update CloudFront origin configuration
   origin {
-    domain_name              = local.website_domain
+    domain_name              = "${aws_s3_bucket.website.bucket}.s3.${data.aws_region.current.name}.amazonaws.com"
     origin_id                = local.s3_origin_id
     origin_access_control_id = aws_cloudfront_origin_access_control.website.id
   }
 
-  logging_config {
-    include_cookies = false
-    bucket         = "${aws_s3_bucket.cloudfront_logs.bucket}.s3.amazonaws.com"
-    prefix         = "cloudfront/"
-  }
-
-  # Default cache behavior
   default_cache_behavior {
-    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = local.s3_origin_id
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.check_host.arn
-    }
-
     forwarded_values {
-      query_string = true
-      headers      = ["Origin", "Host", "Authorization"]
-      
+      query_string = false
       cookies {
-        forward = var.enable_auth ? "whitelist" : "none"
-        whitelisted_names = var.enable_auth ? [
-          "CognitoIdentityServiceProvider.*",
-          "cognito-flow-*",
-          "TOKEN",
-          "ID_TOKEN",
-          "ACCESS_TOKEN"
-        ] : []
+        forward = "none"
       }
     }
 
@@ -588,83 +390,41 @@ resource "aws_cloudfront_distribution" "website" {
     max_ttl     = local.cache_settings.dynamic.max_ttl
   }
 
-  # Static files cache behavior
   dynamic "ordered_cache_behavior" {
     for_each = toset(local.static_paths)
     content {
       path_pattern     = ordered_cache_behavior.value
-      allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+      allowed_methods  = ["GET", "HEAD"]
       cached_methods   = ["GET", "HEAD"]
       target_origin_id = local.s3_origin_id
+      compress        = true
 
       forwarded_values {
         query_string = false
-        headers      = ["Origin"]
         cookies {
           forward = "none"
         }
       }
 
       viewer_protocol_policy = "redirect-to-https"
-      compress              = true
-
       min_ttl     = local.cache_settings.static.min_ttl
       default_ttl = local.cache_settings.static.default_ttl
       max_ttl     = local.cache_settings.static.max_ttl
     }
   }
 
-  # Auth paths cache behavior (if auth enabled)
-  dynamic "ordered_cache_behavior" {
-    for_each = var.enable_auth ? [1] : []
-    content {
-      path_pattern     = "/auth/*"
-      allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-      cached_methods   = ["GET", "HEAD"]
-      target_origin_id = local.s3_origin_id
-
-      forwarded_values {
-        query_string = true
-        headers      = ["Origin", "Authorization"]
-        cookies {
-          forward = "all"
-        }
-      }
-
-      viewer_protocol_policy = "redirect-to-https"
-      compress              = true
-      min_ttl               = 0
-      default_ttl           = 0
-      max_ttl               = 0
-    }
-  }
-
   custom_error_response {
     error_code            = 403
     response_page_path    = "/error_403.html"
-    error_caching_min_ttl = var.custom_error_ttl[403]
+    error_caching_min_ttl = 3600
     response_code         = 403
   }
 
   custom_error_response {
     error_code            = 404
     response_page_path    = "/error_404.html"
-    error_caching_min_ttl = var.custom_error_ttl[404]
+    error_caching_min_ttl = 3600
     response_code         = 404
-  }
-
-  custom_error_response {
-    error_code            = 500
-    response_page_path    = "/error_500.html"
-    error_caching_min_ttl = var.custom_error_ttl[500]
-    response_code         = 500
-  }
-
-  custom_error_response {
-    error_code            = 503
-    response_page_path    = "/error_503.html"
-    error_caching_min_ttl = var.custom_error_ttl[503]
-    response_code         = 503
   }
 
   viewer_certificate {
@@ -680,11 +440,7 @@ resource "aws_cloudfront_distribution" "website" {
   }
 }
 
-#############################
 # Route53 Records
-#############################
-
-# Primary A record
 resource "aws_route53_record" "website" {
   zone_id = var.route53_zone_id
   name    = var.domain_name
@@ -697,7 +453,6 @@ resource "aws_route53_record" "website" {
   }
 }
 
-# WWW A record (if redirect is enabled)
 resource "aws_route53_record" "www" {
   count   = var.redirect_www_to_https ? 1 : 0
   zone_id = var.route53_zone_id
@@ -711,7 +466,6 @@ resource "aws_route53_record" "www" {
   }
 }
 
-# Primary AAAA record (IPv6)
 resource "aws_route53_record" "website_ipv6" {
   zone_id = var.route53_zone_id
   name    = var.domain_name
@@ -724,7 +478,6 @@ resource "aws_route53_record" "website_ipv6" {
   }
 }
 
-# WWW AAAA record (IPv6) (if redirect is enabled)
 resource "aws_route53_record" "www_ipv6" {
   count   = var.redirect_www_to_https ? 1 : 0
   zone_id = var.route53_zone_id
@@ -738,18 +491,10 @@ resource "aws_route53_record" "www_ipv6" {
   }
 }
 
-#############################
 # Outputs
-#############################
-
 output "cloudfront_distribution_id" {
   value       = aws_cloudfront_distribution.website.id
   description = "The ID of the CloudFront distribution"
-}
-
-output "cloudfront_domain_name" {
-  value       = aws_cloudfront_distribution.website.domain_name
-  description = "The domain name of the CloudFront distribution"
 }
 
 output "website_url" {
@@ -757,52 +502,7 @@ output "website_url" {
   description = "The URL of the website"
 }
 
-output "www_url" {
-  value       = var.redirect_www_to_https ? "https://www.${var.domain_name}" : null
-  description = "The www URL of the website (if enabled)"
-}
-
 output "s3_bucket_name" {
   value       = aws_s3_bucket.website.id
   description = "The name of the S3 bucket"
-}
-
-output "s3_bucket_arn" {
-  value       = aws_s3_bucket.website.arn
-  description = "The ARN of the S3 bucket"
-}
-
-output "www_bucket_name" {
-  value       = var.redirect_www_to_https ? aws_s3_bucket.www_redirect[0].id : null
-  description = "The name of the www redirect S3 bucket (if enabled)"
-}
-
-output "logs_bucket_name" {
-  value       = aws_s3_bucket.cloudfront_logs.id
-  description = "The name of the logging bucket"
-}
-
-output "ssm_parameter_name" {
-  value       = aws_ssm_parameter.bucket_name.name
-  description = "SSM parameter name storing the bucket name"
-}
-
-output "cloudfront_function_host_check_arn" {
-  value       = aws_cloudfront_function.check_host.arn
-  description = "The ARN of the CloudFront host check function"
-}
-
-output "api_domain" {
-  value       = local.api_domain
-  description = "The API domain name"
-}
-
-output "auth_domain" {
-  value       = local.auth_domain
-  description = "The auth domain name"
-}
-
-output "auth_enabled" {
-  value       = var.enable_auth
-  description = "Whether authentication is enabled"
 }
