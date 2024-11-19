@@ -309,11 +309,11 @@ resource "aws_s3_bucket_public_access_block" "website" {
 
 # CloudFront Function for Auth Handling
 resource "aws_cloudfront_function" "auth_handler" {
-  name    = "${replace(var.domain_name, ".", "_")}_auth_handler"
-  runtime = "cloudfront-js-1.0"
-  publish = true
-  code    = local.auth_handler_code
-}
+    name    = "${replace(var.domain_name, ".", "_")}_auth_handler"
+    runtime = "cloudfront-js-1.0"
+    code    = local.auth_handler_code
+    publish = true
+  }
 
 # Origin Access Control
 resource "aws_cloudfront_origin_access_control" "website" {
