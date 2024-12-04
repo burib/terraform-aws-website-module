@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/burib/terraform-aws-website-module/compare/v0.1.1...v0.2.0) (2024-12-04)
+
+
+### Features
+
+* init ([#5](https://github.com/burib/terraform-aws-website-module/issues/5)) ([33cb73c](https://github.com/burib/terraform-aws-website-module/commit/33cb73c3541a85496d513452a7b69c1a9b5d0669))
+
 ## [0.1.1](https://github.com/burib/terraform-aws-website-module/compare/v0.1.0...v0.1.1) (2024-11-15)
 
 
