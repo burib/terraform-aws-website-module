@@ -272,11 +272,24 @@ def format_cookie_date(timestamp):
     """Convert Unix timestamp to cookie-compatible date format"""
     return formatdate(timestamp, usegmt=True)
 
-def create_cookie_header(name, value, expiration=None, path="/"):
-    """Create a cookie header with security attributes and expiration"""
-    cookie = f"{name}={value}; Secure; HttpOnly; SameSite=Lax; Path={path}"
+def create_cookie_header(name, value, expiration=None, path="/", http_only=False):
+    """Create a cookie header with security attributes and expiration
+    
+    Args:
+        name: Cookie name
+        value: Cookie value
+        expiration: Optional expiration datetime
+        path: Cookie path (default: "/")
+        http_only: Whether cookie should be HttpOnly (default: False)
+    """
+    cookie = f"{name}={value}; Secure; SameSite=Lax; Path={path}"
+    
+    if http_only:
+        cookie += "; HttpOnly"
+        
     if expiration:
         cookie += f"; Expires={format_cookie_date(expiration)}"
+        
     return cookie
 
 # Update the handler function's protected path check
