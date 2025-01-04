@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/burib/terraform-aws-website-module/compare/v0.2.0...v0.2.1) (2025-01-04)
+
+
+### Bug Fixes
+
+* fetch ssm param from different path ([2559936](https://github.com/burib/terraform-aws-website-module/commit/25599363ec6257a002e13ba80c15b4d68b7920d6))
+
 ## [0.2.0](https://github.com/burib/terraform-aws-website-module/compare/v0.1.1...v0.2.0) (2024-12-04)
 
 
