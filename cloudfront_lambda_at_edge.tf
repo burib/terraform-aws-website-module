@@ -42,7 +42,7 @@ resource "aws_iam_role_policy" "lambda_edge_permissions" {
           "ssm:GetParameter"
         ]
         Resource = [
-          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/auth/cognito_user_pool_client/main/*"
+          "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/auth/cognito/*"
         ]
       }
     ]
