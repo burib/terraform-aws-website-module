@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/burib/terraform-aws-website-module/compare/v0.2.2...v0.2.3) (2025-01-04)
+
+
+### Bug Fixes
+
+* make id_token,access_token accessible by JS ([20f8f79](https://github.com/burib/terraform-aws-website-module/commit/20f8f79803f37334e77f90474ea516b3bc56ce9b))
+
 ## [0.2.2](https://github.com/burib/terraform-aws-website-module/compare/v0.2.1...v0.2.2) (2025-01-04)
 
 
