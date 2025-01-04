@@ -63,7 +63,7 @@ def get_parameter_from_ssm(parameter_name):
 
 # Pre-fetch the client secret at cold start
 try:
-    CLIENT_SECRET = get_parameter_from_ssm('/auth/cognito_user_pool_client/main/client_secret')
+    CLIENT_SECRET = get_parameter_from_ssm('/auth/cognito/user_pool_client_secret')
     logger.debug("Pre-fetched client secret at cold start")
 except Exception as e:
     logger.error(f"Failed to pre-fetch client secret: {e}")
@@ -305,7 +305,7 @@ def handler(event, context):
                     # Exchange code for tokens
                     tokens = exchange_code_for_tokens(
                         code=query_params['code'],
-                        client_secret=CLIENT_SECRET or get_parameter_from_ssm('/auth/cognito_user_pool_client/main/client_secret'),
+                        client_secret=CLIENT_SECRET or get_parameter_from_ssm('/auth/cognito/user_pool_client_secret'),
                         request_domain=request_domain
                     )
 
