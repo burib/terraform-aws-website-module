@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/burib/terraform-aws-website-module/compare/v0.2.1...v0.2.2) (2025-01-04)
+
+
+### Bug Fixes
+
+* update policy to grab correct ssm value ([7b13330](https://github.com/burib/terraform-aws-website-module/commit/7b1333033f6f403652c3b33d6feeb58514fcd6d5))
+
 ## [0.2.1](https://github.com/burib/terraform-aws-website-module/compare/v0.2.0...v0.2.1) (2025-01-04)
 
 
