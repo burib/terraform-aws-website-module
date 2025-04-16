@@ -68,13 +68,14 @@ resource "aws_iam_role_policy" "lambda_edge_permissions" {
 
 resource "aws_lambda_function" "auth_check" {
   filename         = data.archive_file.auth_check.output_path
-  function_name    = "auth-check-${var.environment}"
+  function_name    = "${local.sanitized_domain_name}-lambda-at-edge-auth-check-${var.environment}"
   source_code_hash = data.archive_file.auth_check.output_base64sha256
   role             = aws_iam_role.lambda_edge_auth_check.arn
   handler          = "index.handler"
   runtime          = "python3.13"
   publish          = true # Required for Lambda@Edge
   timeout          = 5    # Lambda@Edge has a 5-second timeout limit
+  description      = "checks if jwt token exists, if not expired and if its valid one issued by cognito."
 
   # Add depends_on for deletion order
   depends_on = [aws_iam_role_policy_attachment.lambda_basic_execution_role]
