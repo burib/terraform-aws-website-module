@@ -14,13 +14,6 @@ resource "aws_s3_bucket" "website" {
   force_destroy = var.force_destroy_s3_bucket
 }
 
-resource "aws_s3_bucket_versioning" "website" {
-  bucket = aws_s3_bucket.website.id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
 resource "aws_s3_bucket_server_side_encryption_configuration" "website" {
   bucket = aws_s3_bucket.website.id
   rule {
