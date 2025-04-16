@@ -11,6 +11,7 @@ locals {
   bucket_name  = "${var.domain_name}-${random_id.bucket_suffix.hex}"
   s3_origin_id = "S3-${local.bucket_name}"
   www_domain   = "www.${var.domain_name}"
+  sanitized_domain_name = replace(var.domain_name, ".", "-")
 
   cache_settings = {
     static = {
