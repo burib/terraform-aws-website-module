@@ -116,12 +116,12 @@ resource "aws_cloudfront_distribution" "website" {
   }
 
   dynamic "custom_error_response" {
-    for_each = local.error_pages
+    for_each = local.all_error_responses
     content {
-      error_code            = custom_error_response.value["error_code"]
-      response_page_path    = "/${custom_error_response.key}"
-      error_caching_min_ttl = try(custom_error_response.value["error_caching_min_ttl"], 3600)
-      response_code         = coalesce(try(custom_error_response.value["response_code"], null), custom_error_response.value["error_code"], 200)
+      error_code            = custom_error_response.value.error_code
+      response_page_path    = custom_error_response.value.response_page_path
+      error_caching_min_ttl = custom_error_response.value.error_caching_min_ttl
+      response_code         = custom_error_response.value.response_code
     }
   }
 
