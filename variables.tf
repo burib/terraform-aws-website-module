@@ -75,3 +75,14 @@ variable "protected_paths" {
   description = "List of paths to protect with authentication"
   default     = ["/dashboard/*"]
 }
+
+variable "custom_error_responses" {
+  description = "Additional custom error responses to add to CloudFront (useful for SPA routing)"
+  type = list(object({
+    error_code            = number
+    response_code         = number
+    response_page_path    = string
+    error_caching_min_ttl = optional(number, 60)
+  }))
+  default = []
+}
