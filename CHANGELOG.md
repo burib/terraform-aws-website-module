@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/burib/terraform-aws-website-module/compare/v0.2.3...v0.3.0) (2025-05-04)
+
+
+### Features
+
+* custom error responses ([#10](https://github.com/burib/terraform-aws-website-module/issues/10)) ([ca90797](https://github.com/burib/terraform-aws-website-module/commit/ca907977535fd4547ee9a537640687b8f83a3787))
+
 ## [0.2.3](https://github.com/burib/terraform-aws-website-module/compare/v0.2.2...v0.2.3) (2025-01-04)
 
 
