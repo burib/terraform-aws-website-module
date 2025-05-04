@@ -29,7 +29,8 @@ locals {
   }
 
   static_paths = ["*.css", "*.js", "*.jpg", "*.jpeg", "*.png", "*.gif", "*.ico", "*.svg", "*.woff", "*.woff2", "*.ttf", "*.eot"]
-  error_pages = {
+  # Existing error pages
+  standard_error_pages = {
     "error_403.html" = {
       error_code = 403
       title      = "Access Denied"
@@ -51,6 +52,26 @@ locals {
       message    = "The service is temporarily unavailable. Please try again later."
     }
   }
+  
+  # Convert standard error pages to the format expected by CloudFront
+  standard_error_responses = {
+    for path, config in local.standard_error_pages :
+    "${config.error_code}" => {
+      error_code            = config.error_code
+      response_page_path    = "/${path}"
+      error_caching_min_ttl = 3600
+      response_code         = config.error_code
+    }
+  }
+  
+  # Convert custom error responses to a map with error_code as key
+  custom_error_responses = {
+    for resp in var.custom_error_responses :
+    "${resp.error_code}_custom_${index(var.custom_error_responses, resp)}" => resp
+  }
+  
+  # Merge both, with custom responses taking precedence
+  all_error_responses = merge(local.standard_error_responses, local.custom_error_responses)
   html_pages = {
     "index.html" = {
       title   = "Home"
